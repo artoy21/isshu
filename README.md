@@ -16,21 +16,4 @@
 - 習得状況と正答率をブラウザに保存
 - スマートフォン対応
 
-## ローカルで動かす
-
-`fetch` で歌データを読むため、ファイルを直接開かずローカルサーバーを使います。
-
-```powershell
-python -m http.server 8000
-```
-
-ブラウザで `http://localhost:8000` を開いてください。
-
-## GitHub Pagesで公開する
-
-1. GitHubに新しいリポジトリを作成し、このフォルダをpushします。
-2. リポジトリの **Settings → Pages** を開きます。
-3. **Build and deployment** の Source を **GitHub Actions** にします。
-4. `main` ブランチへのpush後、Actionsが自動で公開します。
-
 歌データは[クジラWeb API](https://api.aoikujira.com/index.php?hyakunin=&show=)の百人一首データをアプリ内に同梱しています。
