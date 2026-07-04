@@ -162,7 +162,11 @@ function renderQuestion() {
 
 function renderTypingQuestion(poem) {
   const reverse = poem.direction === 'reverse';
-  const expected = normalizeKana(reverse ? poem.kami_kana : poem.simo_kana);
+  const expectedSource = reverse ? poem.kami_kana : poem.simo_kana;
+  const expectedGroups = expectedSource.split(' ').map(normalizeKana);
+  const expected = expectedGroups.join('');
+  let groupTotal = 0;
+  const groupEndIndexes = new Set(expectedGroups.slice(0, -1).map(group => groupTotal += [...group].length));
   const shown = reverse ? poem.simo : poem.kami;
   const answerName = reverse ? '上の句' : '下の句';
   const shownArea = `<section class="verse-block shown-verse"><div class="question-poem">${shown}</div></section>`;
@@ -179,7 +183,7 @@ function renderTypingQuestion(poem) {
     const expectedChars = [...expected];
     const chars = [...entered];
     const firstWrong = chars.findIndex((char, index) => char !== expectedChars[index]);
-    app.querySelector('.character-check').innerHTML = chars.map((char, index) => `<span class="${char === expectedChars[index] ? 'ok' : 'error'}">${escapeHtml(char)}</span>`).join('');
+    app.querySelector('.character-check').innerHTML = chars.map((char, index) => `<span class="${char === expectedChars[index] ? 'ok' : 'error'}${groupEndIndexes.has(index + 1) ? ' phrase-end' : ''}">${escapeHtml(char)}</span>`).join('');
     const incorrect = firstWrong >= 0 || chars.length > expectedChars.length;
     const indicator = app.querySelector('.answer-status');
     input.classList.toggle('has-error', incorrect);
@@ -250,20 +254,29 @@ function renderMobilePhraseQuestion(poem) {
 
 function renderMobileCharacterQuestion(poem) {
   const reverse = poem.direction === 'reverse';
-  const targetKana = normalizeKana(reverse ? poem.kami_kana : poem.simo_kana);
+  const targetKanaSource = reverse ? poem.kami_kana : poem.simo_kana;
+  const targetKanaGroups = targetKanaSource.split(' ').map(normalizeKana);
+  const targetKana = targetKanaGroups.join('');
   const targetChars = [...targetKana];
   const shown = reverse ? poem.simo : poem.kami;
-  const answerName = reverse ? '上の句' : '下の句';
   let position = 0;
   let locked = false;
-  const shownArea = `<section class="verse-block shown-verse"><div class="question-poem">${shown}</div></section>`;
-  const progressArea = `<section class="verse-block answer-verse"><div class="mobile-character-progress" aria-label="回答の進捗"></div><p class="character-position"></p></section>`;
+  const shownArea = `<section class="verse-block shown-verse"><div class="question-poem character-poem">${shown.split(' ').join('<br>')}</div></section>`;
+  const progressArea = `<section class="verse-block answer-verse"><div class="mobile-character-progress" aria-label="回答の進捗"></div></section>`;
   const optionsArea = `<section class="verse-block character-choice-area"><div class="character-options"></div></section>`;
   const orderedAreas = reverse ? progressArea + shownArea + optionsArea : shownArea + progressArea + optionsArea;
-  app.querySelector('.quiz-content').innerHTML = `<p class="eyebrow">${answerName}を一文字ずつ選択</p><div class="verse-order">${orderedAreas}</div><div class="full-answer" aria-live="polite"></div><div class="full-answer-actions"><button class="full-answer-button" type="button">回答全文を見る</button></div><div class="feedback"></div>`;
+  app.querySelector('.quiz-content').innerHTML = `<div class="verse-order">${orderedAreas}</div><div class="full-answer" aria-live="polite"></div><div class="full-answer-actions"><button class="full-answer-button" type="button">回答全文を見る</button></div><div class="feedback"></div>`;
 
   const drawCharacter = () => {
-    app.querySelector('.mobile-character-progress').innerHTML = targetChars.map((char, index) => `<span class="${index < position ? 'filled' : index === position ? 'current' : ''}">${index < position ? char : '・'}</span>`).join('');
+    let offset = 0;
+    app.querySelector('.mobile-character-progress').innerHTML = targetKanaGroups.map(group => {
+      const line = [...group].map((char, localIndex) => {
+        const index = offset + localIndex;
+        return `<span class="${index < position ? 'filled' : index === position ? 'current' : ''}">${index < position ? char : '・'}</span>`;
+      }).join('');
+      offset += [...group].length;
+      return `<div class="mobile-character-line">${line}</div>`;
+    }).join('');
     if (position >= targetChars.length) {
       finishAnswer(true, poem, true);
       return;
@@ -271,7 +284,6 @@ function renderMobileCharacterQuestion(poem) {
     const correctChar = targetChars[position];
     const accepted = sameSoundChars(correctChar);
     const options = buildCharacterOptions(correctChar, accepted);
-    app.querySelector('.character-position').textContent = `${position + 1} / ${targetChars.length}文字`;
     const container = app.querySelector('.character-options');
     container.innerHTML = options.map(char => `<button type="button" data-char="${char}" aria-label="${char}">${char}</button>`).join('');
     container.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
