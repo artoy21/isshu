@@ -39,3 +39,8 @@
 .verse-order.reverse-question .shown-verse{padding:0;border:0}
 .verse-order.reverse-question .shown-verse .question-poem{margin:0 auto}
 @media(max-width:600px){.verse-order{gap:26px}.verse-order.reverse-question .answer-verse{margin:0}.verse-order.reverse-question .shown-verse{padding:0;border:0}.verse-order.reverse-question .shown-verse .question-poem{font-size:clamp(24px,4vw,38px)}}
+
+@media(max-width:800px){
+  .part-choice.correct{background:#d8ead9;border:3px solid #397b4c;color:#1e6538;font-weight:700;box-shadow:0 3px 0 #285d38}
+  .part-choice.wrong{background:#f1d8d3;border:3px solid #b6453b;color:#a12f27;font-weight:700;box-shadow:0 3px 0 #7e302a}
+}
