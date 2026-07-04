@@ -212,7 +212,7 @@ function renderMobileQuestion(poem) {
   const answerName = reverse ? '上の句' : '下の句';
   const shownArea = `<section class="verse-block shown-verse"><div class="question-poem">${shown}</div></section>`;
   const answerArea = `<section class="verse-block answer-verse"><div class="mobile-parts ${reverse ? 'three-parts' : ''}">${choices.map((group, part) => `<fieldset class="part-choices" data-part="${part}"><legend>${labels[part]}</legend>${group.map(text => `<button class="part-choice" data-value="${escapeHtml(text)}">${text}</button>`).join('')}</fieldset>`).join('')}</div></section>`;
-  app.querySelector('.quiz-content').innerHTML = `<p class="eyebrow">${answerName}を句の順に選択</p><div class="verse-order ${reverse ? 'reverse-question' : ''}">${reverse ? answerArea + shownArea : shownArea + answerArea}</div><div class="full-answer" aria-live="polite"></div><div class="full-answer-actions"><button class="full-answer-button" type="button">回答全文を見る</button></div><div class="feedback"></div>`;
+  app.querySelector('.quiz-content').innerHTML = `<p class="eyebrow">${answerName}を句の順に選択</p><div class="verse-order">${shownArea + answerArea}</div><div class="full-answer" aria-live="polite"></div><div class="full-answer-actions"><button class="full-answer-button" type="button">回答全文を見る</button></div><div class="feedback"></div>`;
   app.querySelectorAll('.part-choice').forEach(button => button.addEventListener('click', () => {
     const group = button.closest('.part-choices');
     group.querySelectorAll('.part-choice').forEach(item => item.classList.remove('selected'));
