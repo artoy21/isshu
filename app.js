@@ -270,7 +270,7 @@ function finishAnswer(correct, poem) {
   const answer = poem.direction === 'reverse' ? poem.kami_kana : poem.simo_kana;
   feedback.innerHTML = correct
     ? `<span class="correct-author">${poem.sakusya}</span>`
-    : `<b>もう一歩。正しい句を確認しましょう</b><span>${answer}<br>${poem.sakusya}</span>`;
+    : `<b>正しい句を確認しましょう</b><span>${answer}<br>${poem.sakusya}</span>`;
   if (correct) {
     const answeredIndex = state.quiz.index;
     setTimeout(() => {
