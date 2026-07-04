@@ -2,6 +2,7 @@ const state = {
   poems: [],
   progress: JSON.parse(localStorage.getItem('isshu-progress') || '{}'),
   range: { from: 1, to: 100 },
+  mobileMode: 'characters',
   quiz: null,
   filter: 'all'
 };
@@ -88,11 +89,15 @@ function renderQuizSetup() {
   const allowedEnds = Array.from({ length: 10 }, (_, index) => (index + 1) * 10);
   let selectedFrom = allowedStarts.includes(state.range.from) ? state.range.from : 1;
   let selectedTo = allowedEnds.includes(state.range.to) ? state.range.to : 100;
+  let selectedMobileMode = state.mobileMode;
+  const mobileModePicker = window.matchMedia('(max-width: 800px)').matches
+    ? `<fieldset class="mode-picker"><legend>出題形式</legend><div class="mode-options"><button type="button" data-mode="characters"><b>一文字ずつ5択</b><span>一文字ずつ選ぶ</span></button><button type="button" data-mode="parts"><b>句ごとの4択</b><span>句をまとめて選ぶ</span></button></div></fieldset>`
+    : '';
   app.replaceChildren(clone('#quiz-template'));
   app.querySelector('.quiz-count').textContent = '出題設定';
   app.querySelector('.score').textContent = '全100首';
   app.querySelector('.progress-track i').style.width = '0';
-  app.querySelector('.quiz-content').innerHTML = `<div class="quiz-setup"><p class="eyebrow">稽古する範囲</p><h2>何番から何番まで？</h2><p>開始と終了の歌番号を選んでください。</p><div class="range-picker"><fieldset><legend>開始番号</legend><div class="range-options start-options">${allowedStarts.map(value => `<button type="button" data-value="${value}">${value}</button>`).join('')}</div></fieldset><span class="range-wave">〜</span><fieldset><legend>終了番号</legend><div class="range-options end-options">${allowedEnds.map(value => `<button type="button" data-value="${value}">${value}</button>`).join('')}</div></fieldset></div><p class="range-error" aria-live="polite"></p><button class="button range-start">この範囲で始める <span>→</span></button></div>`;
+  app.querySelector('.quiz-content').innerHTML = `<div class="quiz-setup"><p class="eyebrow">稽古する範囲</p><h2>何番から何番まで？</h2><p>開始と終了の歌番号を選んでください。</p><div class="range-picker"><fieldset><legend>開始番号</legend><div class="range-options start-options">${allowedStarts.map(value => `<button type="button" data-value="${value}">${value}</button>`).join('')}</div></fieldset><span class="range-wave">〜</span><fieldset><legend>終了番号</legend><div class="range-options end-options">${allowedEnds.map(value => `<button type="button" data-value="${value}">${value}</button>`).join('')}</div></fieldset></div>${mobileModePicker}<p class="range-error" aria-live="polite"></p><button class="button range-start">この範囲で始める <span>→</span></button></div>`;
   const updateRange = () => {
     app.querySelectorAll('.start-options button').forEach(button => button.classList.toggle('selected', +button.dataset.value === selectedFrom));
     app.querySelectorAll('.end-options button').forEach(button => {
@@ -112,9 +117,16 @@ function renderQuizSetup() {
     selectedTo = +button.dataset.value;
     updateRange();
   }));
+  app.querySelectorAll('.mode-options button').forEach(button => button.addEventListener('click', () => {
+    selectedMobileMode = button.dataset.mode;
+    app.querySelectorAll('.mode-options button').forEach(option => option.classList.toggle('selected', option === button));
+  }));
+  const initialModeButton = app.querySelector(`.mode-options button[data-mode="${selectedMobileMode}"]`);
+  if (initialModeButton) initialModeButton.classList.add('selected');
   app.querySelector('.range-start').addEventListener('click', () => {
     if (selectedFrom > selectedTo) return;
     state.range = { from: selectedFrom, to: selectedTo };
+    state.mobileMode = selectedMobileMode;
     localStorage.setItem('isshu-range', JSON.stringify(state.range));
     startQuiz();
   });
@@ -131,7 +143,7 @@ function startQuiz() {
   const directions = selected.length === 1
     ? [Math.random() < .5 ? 'forward' : 'reverse']
     : shuffled(selected.map((_, index) => index % 2 ? 'forward' : 'reverse'));
-  const questions = selected.map((poem, index) => ({ ...poem, direction: directions[index] }));
+  const questions = selected.map((poem, index) => ({ ...poem, direction: directions[index], mobileMode: state.mobileMode }));
   state.quiz = { questions, index: 0, score: 0, answered: false };
   app.replaceChildren(clone('#quiz-template'));
   renderQuestion();
@@ -202,6 +214,11 @@ function renderTypingQuestion(poem) {
 }
 
 function renderMobileQuestion(poem) {
+  if (poem.mobileMode === 'characters') renderMobileCharacterQuestion(poem);
+  else renderMobilePhraseQuestion(poem);
+}
+
+function renderMobilePhraseQuestion(poem) {
   const reverse = poem.direction === 'reverse';
   const targetKey = reverse ? 'kami' : 'simo';
   const correctParts = poem[targetKey].split(' ');
@@ -231,6 +248,72 @@ function renderMobileQuestion(poem) {
   bindFullAnswer(poem);
 }
 
+function renderMobileCharacterQuestion(poem) {
+  const reverse = poem.direction === 'reverse';
+  const targetKana = normalizeKana(reverse ? poem.kami_kana : poem.simo_kana);
+  const targetChars = [...targetKana];
+  const shown = reverse ? poem.simo : poem.kami;
+  const answerName = reverse ? '上の句' : '下の句';
+  let position = 0;
+  let locked = false;
+  const shownArea = `<section class="verse-block shown-verse"><div class="question-poem">${shown}</div></section>`;
+  const progressArea = `<section class="verse-block answer-verse"><div class="mobile-character-progress" aria-label="回答の進捗"></div><p class="character-position"></p></section>`;
+  const optionsArea = `<section class="verse-block character-choice-area"><div class="character-options"></div></section>`;
+  const orderedAreas = reverse ? progressArea + shownArea + optionsArea : shownArea + progressArea + optionsArea;
+  app.querySelector('.quiz-content').innerHTML = `<p class="eyebrow">${answerName}を一文字ずつ選択</p><div class="verse-order">${orderedAreas}</div><div class="full-answer" aria-live="polite"></div><div class="full-answer-actions"><button class="full-answer-button" type="button">回答全文を見る</button></div><div class="feedback"></div>`;
+
+  const drawCharacter = () => {
+    app.querySelector('.mobile-character-progress').innerHTML = targetChars.map((char, index) => `<span class="${index < position ? 'filled' : index === position ? 'current' : ''}">${index < position ? char : '・'}</span>`).join('');
+    if (position >= targetChars.length) {
+      finishAnswer(true, poem, true);
+      return;
+    }
+    const correctChar = targetChars[position];
+    const accepted = sameSoundChars(correctChar);
+    const options = buildCharacterOptions(correctChar, accepted);
+    app.querySelector('.character-position').textContent = `${position + 1} / ${targetChars.length}文字`;
+    const container = app.querySelector('.character-options');
+    container.innerHTML = options.map(char => `<button type="button" data-char="${char}" aria-label="${char}">${char}</button>`).join('');
+    container.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
+      if (locked) return;
+      if (button.dataset.char !== correctChar) {
+        button.classList.add('wrong');
+        button.disabled = true;
+        return;
+      }
+      locked = true;
+      container.querySelectorAll('button').forEach(option => {
+        option.disabled = true;
+        if (option.dataset.char === correctChar) option.classList.add('correct');
+      });
+      position++;
+      setTimeout(() => { locked = false; drawCharacter(); }, 280);
+    }));
+  };
+
+  bindFullAnswer(poem);
+  drawCharacter();
+}
+
+function sameSoundChars(char) {
+  const groups = [
+    ['え', 'ゑ', 'へ'],
+    ['い', 'ゐ', 'ひ'],
+    ['お', 'を', 'ほ'],
+    ['わ', 'は'],
+    ['じ', 'ぢ'],
+    ['ず', 'づ']
+  ];
+  return groups.find(group => group.includes(char)) || [char];
+}
+
+function buildCharacterOptions(correctChar, accepted) {
+  const alphabet = [...'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわゐゑをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽゃゅょっ'];
+  const answerChars = state.quiz.questions.flatMap(poem => [...normalizeKana(`${poem.kami_kana}${poem.simo_kana}`)]);
+  const candidates = shuffled([...new Set([...answerChars, ...alphabet])].filter(char => !accepted.includes(char)));
+  return shuffled([...accepted, ...candidates.slice(0, Math.max(0, 5 - accepted.length))]).slice(0, 5);
+}
+
 function bindFullAnswer(poem) {
   const button = app.querySelector('.full-answer-button');
   button.addEventListener('click', () => {
@@ -252,7 +335,7 @@ function escapeHtml(value) {
   return value.replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
 }
 
-function finishAnswer(correct, poem) {
+function finishAnswer(correct, poem, hideAnswer = false) {
   if (state.quiz.answered) return;
   state.quiz.answered = true;
   const record = state.progress[poem.no] ||= { attempts: 0, correct: 0 };
@@ -270,7 +353,7 @@ function finishAnswer(correct, poem) {
   const answer = poem.direction === 'reverse' ? poem.kami_kana : poem.simo_kana;
   feedback.innerHTML = correct
     ? `<span class="correct-author">${poem.sakusya}</span>`
-    : `<b>正しい句を確認しましょう</b><span>${answer}<br>${poem.sakusya}</span>`;
+    : `<span>${hideAnswer ? '' : `${answer}<br>`}${poem.sakusya}</span>`;
   if (correct) {
     const answeredIndex = state.quiz.index;
     setTimeout(() => {
