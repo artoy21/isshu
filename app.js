@@ -320,8 +320,8 @@ function sameSoundChars(char) {
 }
 
 function buildCharacterOptions(correctChar, accepted) {
-  const alphabet = [...'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわゐゑをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽ'];
-  const excluded = new Set(['っ', 'ゃ', 'ゅ', 'ょ']);
+  const alphabet = [...'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわゐゑをんがぎぐげござじずぜぞだぢづでどばびぶべぼ'];
+  const excluded = new Set(['っ', 'ゃ', 'ゅ', 'ょ', 'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ']);
   const answerChars = state.quiz.questions.flatMap(poem => [...normalizeKana(`${poem.kami_kana}${poem.simo_kana}`)]);
   const candidates = shuffled([...new Set([...answerChars, ...alphabet])].filter(char => !accepted.includes(char) && !excluded.has(char)));
   return shuffled([...accepted, ...candidates.slice(0, Math.max(0, 5 - accepted.length))]).slice(0, 5);
